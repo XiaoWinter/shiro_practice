@@ -4,32 +4,34 @@
 ####ini配置文件的方式使用shiro
 * 定义配置文件
 
+```
+# =============================================================================
+# Tutorial INI configuration
+#
+# Usernames/passwords are based on the classic Mel Brooks' film "Spaceballs" :)
+# =============================================================================
 
-    # =============================================================================
-    # Tutorial INI configuration
-    #
-    # Usernames/passwords are based on the classic Mel Brooks' film "Spaceballs" :)
-    # =============================================================================
-    
-    # -----------------------------------------------------------------------------
-    # Users and their (optional) assigned roles
-    # username = password, role1, role2, ..., roleN
-    # -----------------------------------------------------------------------------
-    [users]
-    root = secret, admin
-    guest = guest, guest
-    presidentskroob = 12345, president
-    darkhelmet = ludicrousspeed, darklord, schwartz
-    lonestarr = vespa, goodguy, schwartz
-    
-    # -----------------------------------------------------------------------------
-    # Roles with assigned permissions
-    # roleName = perm1, perm2, ..., permN
-    # -----------------------------------------------------------------------------
-    [roles]
-    admin = *
-    schwartz = lightsaber:*
-    goodguy = winnebago:drive:eagle5
+# -----------------------------------------------------------------------------
+# Users and their (optional) assigned roles
+# username = password, role1, role2, ..., roleN
+# -----------------------------------------------------------------------------
+[users]
+root = secret, admin
+guest = guest, guest
+presidentskroob = 12345, president
+darkhelmet = ludicrousspeed, darklord, schwartz
+lonestarr = vespa, goodguy, schwartz
+
+# -----------------------------------------------------------------------------
+# Roles with assigned permissions
+# roleName = perm1, perm2, ..., permN
+# -----------------------------------------------------------------------------
+[roles]
+admin = *
+schwartz = lightsaber:*
+goodguy = winnebago:drive:eagle5
+```
+
         
         
 * 使用配置文件创建securityManager并使用shiro基本功能（认证，授权）
