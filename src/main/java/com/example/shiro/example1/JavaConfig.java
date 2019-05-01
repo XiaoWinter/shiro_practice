@@ -54,6 +54,7 @@ public class JavaConfig {
 
 
     }
+    //自定义Realm
     static class MyRealm implements Realm{
 
         @Override
