@@ -1,7 +1,7 @@
-#Apache_Shiro Use
+# Apache_Shiro Use
 
 ### Demo1
-####ini配置文件的方式使用shiro
+#### ini配置文件的方式使用shiro
 * 定义配置文件
 
 ```
@@ -218,3 +218,181 @@ public class JavaConfig {
     }
 }
 ```
+### Demo3(整合springboot和shiro)
+#### 依赖
+
+核心为shiro-spring，web应用需要spring-boot-starter-web，spring-boot-starter-test
+
+```xml
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.shiro</groupId>
+			<artifactId>shiro-spring</artifactId>
+			<version>1.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+```
+自定义Realm组件以供认证授权使用
+
+```java
+import org.apache.shiro.authc.*;
+import org.apache.shiro.authz.AuthorizationInfo;
+import org.apache.shiro.authz.SimpleAuthorizationInfo;
+import org.apache.shiro.realm.AuthorizingRealm;
+import org.apache.shiro.subject.PrincipalCollection;
+
+/**
+ * 自定义的UserRealm继承AuthorizingRealm实现认证和授权，可以结合数据库
+ */
+public class UserRealm extends AuthorizingRealm {
+    /**
+     * 授权
+     * @param principals
+     * @return
+     */
+    @Override
+    protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
+        System.out.println("授权");
+        /**数据库方式
+         User user = (User)SecurityUtils.getSubject();//认证时存的principal
+        SimpleAuthorizationInfo info = new SimpleAuthorizationInfo();
+        info.addStringPermissions(user.getPermission());//
+
+        return info;*/
+
+        SimpleAuthorizationInfo info = new SimpleAuthorizationInfo();
+        //添加权限
+        info.addStringPermission("perms[user:add]");
+
+        return info;
+    }
+
+    /**
+     *  认证
+     * @param token
+     * @return
+     * @throws AuthenticationException
+     */
+    @Override
+    protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
+        System.out.println("认证");
+        
+        /**数据库方式
+        UsernamePasswordToken utoken = (UsernamePasswordToken) token;
+        User user = userMapper.getByName(utoken.getUsername());
+        if(user == null)
+            return null;
+        return new SimpleAuthenticationInfo(user,user.getPassword(),getName());*/
+
+        //数据库获取username，password
+        String username ="";
+        String password = "";
+
+        //获取用户名
+        UsernamePasswordToken utoken = (UsernamePasswordToken) token;
+        if (!utoken.getUsername().equals(username))
+            return null;
+        /** principal 主体唯一
+        1）可以是uuid
+        2）数据库中的主键
+        3）LDAP UUID或静态DN
+        4）在所有用户帐户中唯一的字符串用户名。
+
+        也就是说这个值必须是唯一的。也可以是邮箱、身份证等值。*/
+        return new SimpleAuthenticationInfo(username,password,getName());
+    }
+}
+```
+
+此时配置Shiro配置文件，主要为3个bean 
+* ShiroFilterFactoryBean(负责请求过滤)
+* DefaultWebSecurityManager(负责安全管理)
+* Realm(负责提供数据源)
+
+```java
+import com.example.shiro.realm.UserRealm;
+import org.apache.shiro.spring.web.ShiroFilterFactoryBean;
+import org.apache.shiro.web.mgt.DefaultWebSecurityManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Configuration
+public class ShiroConfig {
+    /**
+     * 创建ShiroFilterFactoryBean
+     */
+    @Bean
+    public ShiroFilterFactoryBean shiroFilterFactoryBean(){
+        ShiroFilterFactoryBean filterFactoryBean = new ShiroFilterFactoryBean();
+        //设置安全管理器
+        filterFactoryBean.setSecurityManager(defaultWebSecurityManager());
+
+        /**
+         * 添加Shiro内置过滤器
+         * 常用：
+         *    anon:无需认证（登录）就能访问
+         *    authc:必须认证才能访问
+         *    user:使用rememberMe功能可以直接访问
+         *    perms:该资源必须得到资源权限才能访问
+         *    role:该资源必须得到角色权限才能访问
+         */
+        //权限map
+        Map<String, String> filtermap = new LinkedHashMap<>();
+        //设置方式filtermap.put(请求URL,内置过滤器);
+        //不拦截
+        filtermap.put("/login","anno");
+        filtermap.put("/index","anno");
+        //授权过滤器
+
+        filtermap.put("/resource","perms[user:add]");//需要权限user:add
+
+
+        //最后添加到map
+        filtermap.put("/*","authc");
+        //设置登陆跳转页面
+        filterFactoryBean.setLoginUrl("/login");
+        //授权提示页面
+        filterFactoryBean.setUnauthorizedUrl("/noauth");
+        //设置权限
+        filterFactoryBean.setFilterChainDefinitionMap(filtermap);
+
+
+        return filterFactoryBean;
+    }
+    /**
+     * 创建DefaultWebSecurityManager
+     */
+    @Bean
+    public DefaultWebSecurityManager defaultWebSecurityManager(){
+        DefaultWebSecurityManager securityManager = new DefaultWebSecurityManager();
+        securityManager.setRealm(userRealm());
+        return securityManager;
+    }
+    /**
+     * 创建Realm
+     */
+    @Bean
+    public UserRealm userRealm(){
+        return new UserRealm();
+    }
+
+}
+```
+
+shiro的缺陷，不支持对请求方法的过滤，换言之不支持REST风格，对controller方法过滤可以使用权限注解，但是不便于集中管理权限
